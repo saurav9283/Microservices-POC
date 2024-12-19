@@ -2,23 +2,23 @@ const express = require('express');
 const mongoose = require('mongoose');
 const jwt = require("jsonwebtoken")
 const amqp = require('amqplib');
-const Product = require('./model/Product');
+const Order = require('./model/Order');
 const isAuthenticated = require('../isAuth');
 
 const app = express();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 9090;
 app.use(express.json());
 app.use(express.json());
 
 var channel, connection;
 
 // Connect to MongoDB
-mongoose.connect("mongodb://localhost/product-service", {
+mongoose.connect("mongodb://localhost/order-service", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 })
     .then(() => {
-        console.log("Connected to product service database");
+        console.log(`Connected for Order Service`);
     })
     .catch((error) => {
         console.error("Error connecting to the database:", error);

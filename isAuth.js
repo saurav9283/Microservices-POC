@@ -1,16 +1,30 @@
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 
-export async function isAuth(req, res, next){
-    const token = req.headers["authorization"] .split(" ")[1];
+function isAuth(req, res, next) {
+    const authHeader = req.headers["authorization"];
 
-    jwt.verify(token , "secret" , (err, token) => {
-        if(err) {
-            console.log(err)
-            return res.json({err})
-        }
-        else{
-            req.user = user;
+    // Check if the authorization header exists
+    if (!authHeader) {
+        return res.status(401).json({ error: "Authorization header missing" });
+    }
+
+    // Extract the token from the header
+    const token = authHeader.split(" ")[1];
+
+    if (!token) {
+        return res.status(401).json({ error: "Token missing" });
+    }
+
+    // Verify the token
+    jwt.verify(token, "secret", (err, decodedToken) => {
+        if (err) {
+            console.log(err);
+            return res.status(403).json({ error: "Invalid token" });
+        } else {
+            req.user = decodedToken;
             next();
         }
-    })
+    });
 }
+
+module.exports = isAuth;
