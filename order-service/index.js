@@ -24,24 +24,49 @@ mongoose.connect("mongodb://localhost/order-service", {
         console.error("Error connecting to the database:", error);
     });
 
-async function connect(){
+async function connect() {
     const amqpServer = 'amqp://localhost:5672';
     connection = await amqp.connect(amqpServer);
     channel = await connection.createChannel();
-    await channel.assertQueue('PRODUCT');
+    await channel.assertQueue('ORDER');
 }
-connect();
+
+function createOrder(products, userEmail) {
+    let total = 0;
+    for(let i = 0; i < products.length; i++) {
+        total += products[i].price;
+    }
+    const newOrder = new Order({
+        products,
+        user: userEmail,
+        total_price: total
+    });
+    newOrder.save();
+    return newOrder;
+}
+
+connect().then(() => {
+    channel.consume("ORDER", data => {
+        const { products, userEmail } = JSON.parse(data.content);
+        const newOrder = createOrder(products, userEmail);
+        channel.ack(data); // read from the order queue and remove
+        
+        channel.sendToQueue("PRODUCT", Buffer.from(JSON.stringify({newOrder})));
+        console.log("consuming order service" , newOrder);
+
+    });
+})
 
 //Create a new product 
 //Buy a product
-app.post('/product/create',isAuthenticated, async (req, res) => {
+app.post('/product/create', isAuthenticated, async (req, res) => {
     try {
-        const {name,description,price} = req.body;  
-    const newProduct = new Product({
-        name,description,price
-    })
+        const { name, description, price } = req.body;
+        const newProduct = new Product({
+            name, description, price
+        })
 
-    return res.json(newProduct);
+        return res.json(newProduct);
     } catch (error) {
         console.log(error)
 
@@ -52,7 +77,7 @@ app.post('/product/create',isAuthenticated, async (req, res) => {
 // creating an order for the product and total value of sun of product's price
 
 app.post('/product/buy', isAuthenticated, async (req, res) => {
-    const {ids} = req.body;
+    const { ids } = req.body;
     const products = await Product.find({ _id: { $in: ids } });
 });
 
